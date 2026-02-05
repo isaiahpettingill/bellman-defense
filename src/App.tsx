@@ -15,7 +15,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const updateSize = () => {
-      const size = Math.min(window.innerWidth - 40, 700);
+      const maxWidth = window.innerWidth - 40;
+      const maxHeight = window.innerHeight - 300; // Account for headers/UI
+      const size = Math.min(maxWidth, maxHeight, 700);
       setDimensions({ width: size, height: size });
     };
     window.addEventListener('resize', updateSize);
@@ -205,10 +207,18 @@ const App: React.FC = () => {
     });
 
     if (clickedTower) {
-      setSelectedTowerId(clickedTower.id);
+      const now = Date.now();
+      if (lastClickRef.current && lastClickRef.current.nodeId === clickedTower.nodeId && now - lastClickRef.current.time < 300) {
+        setSelectedTowerId(clickedTower.id);
+        lastClickRef.current = null;
+      } else {
+        lastClickRef.current = { nodeId: clickedTower.nodeId, time: now };
+      }
       return;
     }
 
+    // Only deselect if we didn't click on an upgrade UI (which is outside the canvas)
+    // But this handleInteraction is only for the canvas.
     setSelectedTowerId(null);
 
     // Find closest node
@@ -259,58 +269,76 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {selectedTower && (
-        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#1e1e1e', borderRadius: '8px', border: '2px solid #03a9f4', width: '90%', maxWidth: '700px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong>Tower Info: {selectedTower.type.replace('_', ' ').toUpperCase()} (Tier {selectedTower.tier})</strong>
-            <button onClick={() => setSelectedTowerId(null)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>Close</button>
-          </div>
-          {selectedTower.tier === 1 ? (
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button 
-                onClick={() => setGameState(prev => upgradeTower(prev, selectedTower.id, 'fast_shot'))}
-                disabled={gameState.money < 200}
-                style={{ backgroundColor: '#ffeb3b', color: '#000', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 200 ? 0.5 : 1 }}
-              >
-                Upgrade: Fast Shot (200)
-              </button>
-              <button 
-                onClick={() => setGameState(prev => upgradeTower(prev, selectedTower.id, 'heavy_shot'))}
-                disabled={gameState.money < 200}
-                style={{ backgroundColor: '#f44336', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 200 ? 0.5 : 1 }}
-              >
-                Upgrade: Heavy Shot (200)
-              </button>
-              <button 
-                onClick={() => setGameState(prev => upgradeTower(prev, selectedTower.id, 'area_damage'))}
-                disabled={gameState.money < 200}
-                style={{ backgroundColor: '#4caf50', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 200 ? 0.5 : 1 }}
-              >
-                Upgrade: Area Damage (200)
-              </button>
-            </div>
-          ) : selectedTower.tier === 2 ? (
-            <button 
-              onClick={() => setGameState(prev => upgradeTower(prev, selectedTower.id, selectedTower.type as any))}
-              disabled={gameState.money < 400}
-              style={{ backgroundColor: '#ffeb3b', color: '#000', border: '2px solid #fff', padding: '10px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 400 ? 0.5 : 1 }}
-            >
-              Upgrade to TIER 3: {selectedTower.type === 'fast_shot' ? 'Even Faster' : (selectedTower.type === 'heavy_shot' ? 'Precise' : 'Spray')} (400)
-            </button>
-          ) : (
-            <p style={{ margin: 0, fontSize: '0.9em', color: '#ffd700', fontWeight: 'bold' }}>ULTIMATE TIER REACHED</p>
-          )}
-        </div>
-      )}
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <canvas
+          ref={canvasRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          onClick={handleInteraction}
+          onTouchStart={handleTouchStart}
+          style={{ border: '4px solid #333', borderRadius: '8px', cursor: 'crosshair', backgroundColor: '#000', boxShadow: '0 10px 20px rgba(0,0,0,0.5)', maxWidth: '100%', height: 'auto', touchAction: 'none' }}
+        />
 
-      <canvas
-        ref={canvasRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        onClick={handleInteraction}
-        onTouchStart={handleTouchStart}
-        style={{ border: '4px solid #333', borderRadius: '8px', cursor: 'crosshair', backgroundColor: '#000', boxShadow: '0 10px 20px rgba(0,0,0,0.5)', maxWidth: '100%', height: 'auto', touchAction: 'none' }}
-      />
+        {selectedTower && (
+          <div style={{ 
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            padding: '15px', 
+            backgroundColor: 'rgba(30, 30, 30, 0.95)', 
+            borderRadius: '8px', 
+            border: '2px solid #03a9f4', 
+            width: '80%', 
+            maxWidth: '400px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '10px',
+            boxShadow: '0 0 20px rgba(0,0,0,0.8)',
+            zIndex: 10
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong>Tower: {selectedTower.type.replace('_', ' ').toUpperCase()} (T{selectedTower.tier})</strong>
+              <button onClick={() => setSelectedTowerId(null)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '1.2em' }}>×</button>
+            </div>
+            {selectedTower.tier === 1 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button 
+                  onClick={() => setGameState(prev => upgradeTower(prev, selectedTower.id, 'fast_shot'))}
+                  disabled={gameState.money < 200}
+                  style={{ backgroundColor: '#ffeb3b', color: '#000', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 200 ? 0.5 : 1 }}
+                >
+                  Fast Shot (200)
+                </button>
+                <button 
+                  onClick={() => setGameState(prev => upgradeTower(prev, selectedTower.id, 'heavy_shot'))}
+                  disabled={gameState.money < 200}
+                  style={{ backgroundColor: '#f44336', color: '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 200 ? 0.5 : 1 }}
+                >
+                  Heavy Shot (200)
+                </button>
+                <button 
+                  onClick={() => setGameState(prev => upgradeTower(prev, selectedTower.id, 'area_damage'))}
+                  disabled={gameState.money < 200}
+                  style={{ backgroundColor: '#4caf50', color: '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 200 ? 0.5 : 1 }}
+                >
+                  Area Damage (200)
+                </button>
+              </div>
+            ) : selectedTower.tier === 2 ? (
+              <button 
+                onClick={() => setGameState(prev => upgradeTower(prev, selectedTower.id, selectedTower.type as any))}
+                disabled={gameState.money < 400}
+                style={{ backgroundColor: '#ffeb3b', color: '#000', border: '2px solid #fff', padding: '12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 400 ? 0.5 : 1 }}
+              >
+                Upgrade to T3: {selectedTower.type === 'fast_shot' ? 'Even Faster' : (selectedTower.type === 'heavy_shot' ? 'Precise' : 'Spray')} (400)
+              </button>
+            ) : (
+              <p style={{ margin: 0, textAlign: 'center', color: '#ffd700', fontWeight: 'bold' }}>ULTIMATE TIER REACHED</p>
+            )}
+          </div>
+        )}
+      </div>
       <div style={{ marginTop: '20px', maxWidth: '600px', textAlign: 'center', lineHeight: '1.6', color: '#aaa' }}>
         <p><strong>How to Play:</strong> Click on <span style={{color: '#222'}}>dark empty nodes</span> to build towers (Cost: 100). Towers increase the weight of nearby paths, causing enemies to seek safer routes. Double-click on <span style={{color: '#555'}}>roads</span> to place a temporary block (Cost: 50, Duration: 5s).</p>
         <p>Completing all waves in a stage clears the map, <strong>resets towers/money</strong>, and generates a new map!</p>
