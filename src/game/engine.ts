@@ -38,7 +38,7 @@ export interface Projectile {
   aoe?: number;
 }
 
-export type GameStatus = 'build_phase' | 'wave_countdown' | 'playing' | 'stage_transition' | 'game_over';
+export type GameStatus = 'build_phase' | 'wave_countdown' | 'playing' | 'stage_transition' | 'game_over' | 'paused';
 
 export interface RoadBlock {
   nodeId: string;

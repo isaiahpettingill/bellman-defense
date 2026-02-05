@@ -15,8 +15,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const updateSize = () => {
-      const maxWidth = window.innerWidth - 40;
-      const maxHeight = window.innerHeight - 300; // Account for headers/UI
+      const maxWidth = window.innerWidth - 20;
+      const maxHeight = window.innerHeight - 200; // More aggressive buffer for mobile
       const size = Math.min(maxWidth, maxHeight, 700);
       setDimensions({ width: size, height: size });
     };
@@ -28,7 +28,10 @@ const App: React.FC = () => {
   const animate = (time: number) => {
     if (lastTimeRef.current !== undefined) {
       const deltaTime = time - lastTimeRef.current;
-      setGameState(prev => updateGame(prev, deltaTime));
+      setGameState(prev => {
+        if (prev.status === 'paused') return prev;
+        return updateGame(prev, deltaTime);
+      });
     }
     lastTimeRef.current = time;
     requestRef.current = requestAnimationFrame(animate);
@@ -152,14 +155,20 @@ const App: React.FC = () => {
       ctx.fillRect(enemy.x - 15, enemy.y - 20, (enemy.hp / enemy.maxHp) * 30, 4);
     });
 
-    // Draw Overlay for build phase/countdown
+    // Draw Overlay for build phase/countdown/pause
     if (gameState.status !== 'playing' && gameState.status !== 'game_over') {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#fff';
       ctx.font = `bold ${canvas.width * 0.05}px sans-serif`;
-      const text = gameState.status === 'build_phase' ? 'Build Phase' : (gameState.status === 'stage_transition' ? `Stage ${gameState.stage + 1} starting` : 'Next Wave in');
-      ctx.fillText(`${text} ${Math.ceil(gameState.timer / 1000)}s`, canvas.width / 2, canvas.height / 2);
+      
+      let text = '';
+      if (gameState.status === 'build_phase') text = `Build Phase ${Math.ceil(gameState.timer / 1000)}s`;
+      else if (gameState.status === 'stage_transition') text = `Stage ${gameState.stage + 1} starting ${Math.ceil(gameState.timer / 1000)}s`;
+      else if (gameState.status === 'wave_countdown') text = `Next Wave in ${Math.ceil(gameState.timer / 1000)}s`;
+      else if (gameState.status === 'paused') text = 'PAUSED';
+
+      ctx.fillText(text, canvas.width / 2, canvas.height / 2);
     }
 
     if (gameState.status === 'game_over') {
@@ -259,6 +268,12 @@ const App: React.FC = () => {
         <span>❤️ <strong>{gameState.lives}</strong></span>
         <span>🌍 <strong>Stage {gameState.stage}</strong></span>
         <span>🌊 <strong>Wave {gameState.wave}/{gameState.maxWavesPerStage}</strong></span>
+        <button 
+            onClick={() => setGameState(prev => ({ ...prev, status: prev.status === 'paused' ? 'playing' : 'paused' }))}
+            style={{ backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+            {gameState.status === 'paused' ? 'Resume' : 'Pause'}
+        </button>
         {gameState.status === 'playing' && gameState.enemies.length === 0 && gameState.enemiesToSpawn === 0 && (
             <button 
                 onClick={() => setGameState(prev => startNextWave(prev))}
