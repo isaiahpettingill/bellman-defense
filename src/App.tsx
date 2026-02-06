@@ -175,9 +175,9 @@ const App: React.FC = () => {
     // Draw Overlay for build phase/countdown/pause
     if (gameState.status !== 'playing' && gameState.status !== 'game_over') {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, 700, 700);
       ctx.fillStyle = '#fff';
-      ctx.font = `bold ${canvas.width * 0.05}px sans-serif`;
+      ctx.font = `bold 35px sans-serif`;
       
       let text = '';
       if (gameState.status === 'build_phase') text = `Build Phase ${Math.ceil(gameState.timer / 1000)}s`;
@@ -185,18 +185,18 @@ const App: React.FC = () => {
       else if (gameState.status === 'wave_countdown') text = `Next Wave in ${Math.ceil(gameState.timer / 1000)}s`;
       else if (gameState.status === 'paused') text = 'PAUSED';
 
-      ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+      ctx.fillText(text, 350, 350);
     }
 
     if (gameState.status === 'game_over') {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, 700, 700);
         ctx.fillStyle = '#f44336';
-        ctx.font = `bold ${canvas.width * 0.09}px sans-serif`;
-        ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
-        ctx.font = `${canvas.width * 0.035}px sans-serif`;
+        ctx.font = `bold 63px sans-serif`;
+        ctx.fillText('GAME OVER', 350, 350);
+        ctx.font = `24px sans-serif`;
         ctx.fillStyle = '#fff';
-        ctx.fillText('Refresh to restart', canvas.width / 2, canvas.height / 2 + 50);
+        ctx.fillText('Refresh to restart', 350, 400);
     }
 
     ctx.restore();
