@@ -111,7 +111,7 @@ export function generateGraph(stage: number) {
         const x = (n.x - MARGIN) / NODE_SPACING;
         const y = (n.y - MARGIN) / NODE_SPACING;
         const distFromStart = x + y;
-        return distFromStart < (GRID_SIZE * 0.4); // Start warps in first 40%
+        return distFromStart >= 4 && distFromStart < (GRID_SIZE * 0.4); // Start warps after 4 blocks, but in first 40%
       });
 
       const candidateToNodes = pNodes.filter(n => {
