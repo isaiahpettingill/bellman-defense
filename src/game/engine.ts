@@ -40,9 +40,15 @@ export interface Projectile {
 
 export type GameStatus = 'build_phase' | 'wave_countdown' | 'playing' | 'stage_transition' | 'game_over' | 'paused';
 
+export type RoadBlockType = 'barricade' | 'spikes' | 'sludge';
+
 export interface RoadBlock {
   nodeId: string;
+  type: RoadBlockType;
   expiresAt: number;
+  hp?: number;
+  damageRemaining?: number;
+  slowCount?: number;
 }
 
 export interface GameState {
@@ -115,15 +121,21 @@ export function updateGame(state: GameState, deltaTime: number): GameState {
 
   // Update Road Blocks
   const nowMs = Date.now();
-  newState.roadBlocks = newState.roadBlocks.filter(rb => rb.expiresAt > nowMs);
+  newState.roadBlocks = newState.roadBlocks.filter(rb => {
+    if (rb.expiresAt <= nowMs) return false;
+    if (rb.hp !== undefined && rb.hp <= 0) return false;
+    if (rb.damageRemaining !== undefined && rb.damageRemaining <= 0) return false;
+    if (rb.slowCount !== undefined && rb.slowCount >= 5) return false;
+    return true;
+  });
 
   // Calculate dynamic weights
   const dynamicEdges = newState.edges.map(e => {
     let weight = e.weight;
     const toNode = newState.nodes.find(n => n.id === e.to)!;
     
-    // Road block check
-    const isBlocked = newState.roadBlocks.some(rb => rb.nodeId === e.to || rb.nodeId === e.from);
+    // Road block check (only barricades effectively block the path for pathfinding weights)
+    const isBlocked = newState.roadBlocks.some(rb => rb.type === 'barricade' && (rb.nodeId === e.to || rb.nodeId === e.from));
     if (isBlocked) {
       weight = 1000000; // Effectively infinite
     } else {
@@ -195,20 +207,47 @@ export function updateGame(state: GameState, deltaTime: number): GameState {
       return true;
     }
 
-    const isNextNodeBlocked = newState.roadBlocks.some(rb => rb.nodeId === enemy.nextNodeId);
-    if (!isNextNodeBlocked) {
-      enemy.progress += (enemy.speed * deltaTime) / 1000;
+    const roadBlock = newState.roadBlocks.find(rb => rb.nodeId === enemy.nextNodeId);
+    let speedModifier = 1;
+
+    if (roadBlock) {
+      if (roadBlock.type === 'barricade') {
+        // Block and deal melee damage to block
+        const meleeDamage = (enemy.type === 'tank' ? 10 : 2) * (deltaTime / 1000);
+        roadBlock.hp = (roadBlock.hp || 0) - meleeDamage;
+        return true; // Enemy stays at current node
+      } else if (roadBlock.type === 'spikes') {
+        const spikeDamage = 5 * (deltaTime / 1000);
+        enemy.hp -= spikeDamage;
+        roadBlock.damageRemaining = (roadBlock.damageRemaining || 0) - spikeDamage;
+        if (enemy.hp <= 0) {
+          newState.money += enemy.reward;
+          return false;
+        }
+      } else if (roadBlock.type === 'sludge') {
+        speedModifier = 0.4;
+        // Sludge expires after affecting 5 enemies? 
+        // User said "can slow up to five enemies". 
+        // We'll track affected enemies per frame or per entry. 
+        // Simplest: increase slowCount if not already at current node? 
+        // Let's just use it as a persistent field for now.
+      }
     }
+
+    enemy.progress += (enemy.speed * speedModifier * deltaTime) / 1000;
     
     const startNode = newState.nodes.find(n => n.id === enemy.currentNodeId)!;
     const endNode = newState.nodes.find(n => n.id === enemy.nextNodeId)!;
 
     if (enemy.progress >= 1) {
+      if (roadBlock && roadBlock.type === 'sludge') {
+        roadBlock.slowCount = (roadBlock.slowCount || 0) + 1;
+      }
       enemy.progress = 0;
       enemy.currentNodeId = enemy.nextNodeId;
       enemy.x = endNode.x;
       enemy.y = endNode.y;
-    } else if (!isNextNodeBlocked) {
+    } else {
       enemy.x = startNode.x + (endNode.x - startNode.x) * enemy.progress;
       enemy.y = startNode.y + (endNode.y - startNode.y) * enemy.progress;
     }
@@ -405,14 +444,18 @@ export function placeTower(state: GameState, nodeId: string): GameState {
   };
 }
 
-export function placeRoadBlock(state: GameState, nodeId: string): GameState {
+export function placeRoadBlock(state: GameState, nodeId: string, type: RoadBlockType): GameState {
   const node = state.nodes.find(n => n.id === nodeId);
   if (!node || !node.isPath || state.money < 50) return state;
   if (state.roadBlocks.find(rb => rb.nodeId === nodeId)) return state;
 
   const newRoadBlock: RoadBlock = {
     nodeId,
-    expiresAt: Date.now() + 5000,
+    type,
+    expiresAt: Date.now() + (type === 'sludge' ? 8000 : 15000), // Sludge shorter, others 15s
+    hp: type === 'barricade' ? 100 : undefined,
+    damageRemaining: type === 'spikes' ? 150 : undefined,
+    slowCount: type === 'sludge' ? 0 : undefined,
   };
 
   return {

@@ -9,6 +9,7 @@ const App: React.FC = () => {
   const lastTimeRef = useRef<number>(0);
 
   const [selectedTowerId, setSelectedTowerId] = useState<string | null>(null);
+  const [selectedRoadNodeId, setSelectedRoadNodeId] = useState<string | null>(null);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const lastClickRef = useRef<{ nodeId: string, time: number } | null>(null);
 
@@ -87,9 +88,10 @@ const App: React.FC = () => {
       // Draw Road Blocks
       const roadBlock = gameState.roadBlocks.find(rb => rb.nodeId === node.id);
       if (roadBlock) {
-        ctx.fillStyle = '#ff9800';
+        ctx.fillStyle = roadBlock.type === 'barricade' ? '#ff9800' : (roadBlock.type === 'spikes' ? '#f44336' : '#9c27b0');
         ctx.font = '24px "Material Icons"';
-        ctx.fillText('block', node.x, node.y);
+        const icon = roadBlock.type === 'barricade' ? 'block' : (roadBlock.type === 'spikes' ? 'format_size' : 'opacity');
+        ctx.fillText(icon, node.x, node.y);
       }
     });
 
@@ -247,7 +249,7 @@ const App: React.FC = () => {
       if (lastClickRef.current && lastClickRef.current.nodeId === closest.id && now - lastClickRef.current.time < 300) {
         // Double click detected
         if (closest.isPath) {
-          setGameState(prev => placeRoadBlock(prev, closest.id));
+          setSelectedRoadNodeId(closest.id);
         }
         lastClickRef.current = null;
       } else {
@@ -359,6 +361,54 @@ const App: React.FC = () => {
             ) : (
               <p style={{ margin: 0, textAlign: 'center', color: '#ffd700', fontWeight: 'bold' }}>ULTIMATE TIER REACHED</p>
             )}
+          </div>
+        )}
+
+        {selectedRoadNodeId && (
+          <div style={{ 
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            padding: '15px', 
+            backgroundColor: 'rgba(30, 30, 30, 0.95)', 
+            borderRadius: '8px', 
+            border: '2px solid #ff9800', 
+            width: '80%', 
+            maxWidth: '400px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '10px',
+            boxShadow: '0 0 20px rgba(0,0,0,0.8)',
+            zIndex: 10
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong>Select Road Block (50)</strong>
+              <button onClick={() => setSelectedRoadNodeId(null)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '1.2em' }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button 
+                onClick={() => { setGameState(prev => placeRoadBlock(prev, selectedRoadNodeId, 'barricade')); setSelectedRoadNodeId(null); }}
+                disabled={gameState.money < 50}
+                style={{ backgroundColor: '#ff9800', color: '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 50 ? 0.5 : 1 }}
+              >
+                Barricade (Block Path + HP)
+              </button>
+              <button 
+                onClick={() => { setGameState(prev => placeRoadBlock(prev, selectedRoadNodeId, 'spikes')); setSelectedRoadNodeId(null); }}
+                disabled={gameState.money < 50}
+                style={{ backgroundColor: '#f44336', color: '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 50 ? 0.5 : 1 }}
+              >
+                Spikes (Damage Cap)
+              </button>
+              <button 
+                onClick={() => { setGameState(prev => placeRoadBlock(prev, selectedRoadNodeId, 'sludge')); setSelectedRoadNodeId(null); }}
+                disabled={gameState.money < 50}
+                style={{ backgroundColor: '#9c27b0', color: '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', opacity: gameState.money < 50 ? 0.5 : 1 }}
+              >
+                Sludge (Slow 5 Enemies)
+              </button>
+            </div>
           </div>
         )}
       </div>
