@@ -294,18 +294,22 @@ const App: React.FC = () => {
       zIndex: isFullscreen ? 1000 : 1,
       overflow: isFullscreen ? 'hidden' : 'auto'
     }}>
-      {!isFullscreen && <h1>Bellman Defense: Stages & Waves</h1>}
+      {!isFullscreen && (
+        <h1 style={{ fontSize: '1.5rem', textAlign: 'center', margin: '10px 0' }}>
+          Bellman Defense: Stages & Waves
+        </h1>
+      )}
       <div style={{ 
         marginBottom: isFullscreen ? '5px' : '20px', 
-        fontSize: isFullscreen ? '14px' : 'min(1.2em, 4vw)', 
+        fontSize: isFullscreen ? '12px' : 'clamp(10px, 3.5vw, 16px)', 
         backgroundColor: '#1e1e1e', 
-        padding: isFullscreen ? '5px' : '10px 20px', 
+        padding: isFullscreen ? '5px' : '10px', 
         borderRadius: '8px', 
         boxShadow: '0 4px 6px rgba(0,0,0,0.3)', 
         display: 'flex', 
-        gap: '2vw', 
+        gap: '8px', 
         alignItems: 'center', 
-        width: isFullscreen ? '100%' : '90%', 
+        width: isFullscreen ? '100%' : 'min(95%, 600px)', 
         justifyContent: 'center', 
         flexWrap: 'wrap' 
       }}>
