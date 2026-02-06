@@ -14,18 +14,27 @@ const App: React.FC = () => {
   const lastClickRef = useRef<{ nodeId: string, time: number } | null>(null);
 
   const [dimensions, setDimensions] = useState({ width: 700, height: 700 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     const updateSize = () => {
       const maxWidth = window.innerWidth - 20;
-      const maxHeight = window.innerHeight - 200; // More aggressive buffer for mobile
-      const size = Math.min(maxWidth, maxHeight, 700);
-      setDimensions({ width: size, height: size });
+      const maxHeight = window.innerHeight - 150; 
+      
+      if (isFullscreen) {
+        // In fullscreen, we want the game coordinates (700x700) 
+        // to map to the largest possible centered square on the screen.
+        const size = Math.min(window.innerWidth, window.innerHeight);
+        setDimensions({ width: size, height: size });
+      } else {
+        const size = Math.min(maxWidth, maxHeight, 700);
+        setDimensions({ width: size, height: size });
+      }
     };
     window.addEventListener('resize', updateSize);
     updateSize();
     return () => window.removeEventListener('resize', updateSize);
-  }, []);
+  }, [isFullscreen]);
 
   const animate = (time: number) => {
     if (lastTimeRef.current !== undefined) {
@@ -52,6 +61,11 @@ const App: React.FC = () => {
 
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Scaling factor for internal game coordinates (700x700) to actual canvas size
+    const scale = dimensions.width / 700;
+    ctx.save();
+    ctx.scale(scale, scale);
 
     // Draw Map (Background for path nodes)
     gameState.nodes.forEach(node => {
@@ -185,6 +199,8 @@ const App: React.FC = () => {
         ctx.fillText('Refresh to restart', canvas.width / 2, canvas.height / 2 + 50);
     }
 
+    ctx.restore();
+
   }, [gameState, dimensions]);
 
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
@@ -206,8 +222,8 @@ const App: React.FC = () => {
       clientY = (e as React.MouseEvent).clientY;
     }
 
-    const scaleX = canvasRef.current!.width / rect.width;
-    const scaleY = canvasRef.current!.height / rect.height;
+    const scaleX = 700 / rect.width;
+    const scaleY = 700 / rect.height;
 
     const x = (clientX - rect.left) * scaleX;
     const y = (clientY - rect.top) * scaleY;
@@ -264,31 +280,63 @@ const App: React.FC = () => {
   const selectedTower = gameState.towers.find(t => t.id === selectedTowerId);
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#121212', color: '#e0e0e0', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <h1>Bellman Defense: Stages & Waves</h1>
-      <div style={{ marginBottom: '20px', fontSize: 'min(1.2em, 4vw)', backgroundColor: '#1e1e1e', padding: '10px 20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)', display: 'flex', gap: '5vw', alignItems: 'center', width: '90%', justifyContent: 'center', flexWrap: 'wrap' }}>
+    <div style={{ 
+      padding: isFullscreen ? '0' : '20px', 
+      fontFamily: 'sans-serif', 
+      backgroundColor: '#121212', 
+      color: '#e0e0e0', 
+      minHeight: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center',
+      position: isFullscreen ? 'fixed' : 'relative',
+      top: 0, left: 0, right: 0, bottom: 0,
+      zIndex: isFullscreen ? 1000 : 1,
+      overflow: isFullscreen ? 'hidden' : 'auto'
+    }}>
+      {!isFullscreen && <h1>Bellman Defense: Stages & Waves</h1>}
+      <div style={{ 
+        marginBottom: isFullscreen ? '5px' : '20px', 
+        fontSize: isFullscreen ? '14px' : 'min(1.2em, 4vw)', 
+        backgroundColor: '#1e1e1e', 
+        padding: isFullscreen ? '5px' : '10px 20px', 
+        borderRadius: '8px', 
+        boxShadow: '0 4px 6px rgba(0,0,0,0.3)', 
+        display: 'flex', 
+        gap: '2vw', 
+        alignItems: 'center', 
+        width: isFullscreen ? '100%' : '90%', 
+        justifyContent: 'center', 
+        flexWrap: 'wrap' 
+      }}>
         <span>💰 <strong>{gameState.money}</strong></span>
         <span>❤️ <strong>{gameState.lives}</strong></span>
-        <span>🌍 <strong>Stage {gameState.stage}</strong></span>
-        <span>🌊 <strong>Wave {gameState.wave}/{gameState.maxWavesPerStage}</strong></span>
+        <span>🌍 <strong>S{gameState.stage}</strong></span>
+        <span>🌊 <strong>W{gameState.wave}/{gameState.maxWavesPerStage}</strong></span>
+        <button 
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            style={{ backgroundColor: '#607d8b', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+            {isFullscreen ? 'Exit' : 'Fullscreen'}
+        </button>
         <button 
             onClick={() => setShowHowToPlay(!showHowToPlay)}
-            style={{ backgroundColor: '#2196f3', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+            style={{ backgroundColor: '#2196f3', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
         >
             Info
         </button>
         <button 
             onClick={() => setGameState(prev => ({ ...prev, status: prev.status === 'paused' ? 'playing' : 'paused' }))}
-            style={{ backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+            style={{ backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
         >
             {gameState.status === 'paused' ? 'Resume' : 'Pause'}
         </button>
         {gameState.status === 'playing' && gameState.enemies.length === 0 && gameState.enemiesToSpawn === 0 && (
             <button 
                 onClick={() => setGameState(prev => startNextWave(prev))}
-                style={{ backgroundColor: '#4caf50', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                style={{ backgroundColor: '#4caf50', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
             >
-                Next Wave
+                Next
             </button>
         )}
       </div>
