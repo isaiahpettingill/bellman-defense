@@ -9,6 +9,7 @@ const App: React.FC = () => {
   const lastTimeRef = useRef<number>(0);
 
   const [selectedTowerId, setSelectedTowerId] = useState<string | null>(null);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   const lastClickRef = useRef<{ nodeId: string, time: number } | null>(null);
 
   const [dimensions, setDimensions] = useState({ width: 700, height: 700 });
@@ -217,7 +218,7 @@ const App: React.FC = () => {
 
     if (clickedTower) {
       const now = Date.now();
-      if (lastClickRef.current && lastClickRef.current.nodeId === clickedTower.nodeId && now - lastClickRef.current.time < 300) {
+      if ((e as React.MouseEvent).button === 2 || (lastClickRef.current && lastClickRef.current.nodeId === clickedTower.nodeId && now - lastClickRef.current.time < 300)) {
         setSelectedTowerId(clickedTower.id);
         lastClickRef.current = null;
       } else {
@@ -269,6 +270,12 @@ const App: React.FC = () => {
         <span>🌍 <strong>Stage {gameState.stage}</strong></span>
         <span>🌊 <strong>Wave {gameState.wave}/{gameState.maxWavesPerStage}</strong></span>
         <button 
+            onClick={() => setShowHowToPlay(!showHowToPlay)}
+            style={{ backgroundColor: '#2196f3', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+            Info
+        </button>
+        <button 
             onClick={() => setGameState(prev => ({ ...prev, status: prev.status === 'paused' ? 'playing' : 'paused' }))}
             style={{ backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
         >
@@ -290,6 +297,7 @@ const App: React.FC = () => {
           width={dimensions.width}
           height={dimensions.height}
           onClick={handleInteraction}
+          onContextMenu={(e) => { e.preventDefault(); handleInteraction(e); }}
           onTouchStart={handleTouchStart}
           style={{ border: '4px solid #333', borderRadius: '8px', cursor: 'crosshair', backgroundColor: '#000', boxShadow: '0 10px 20px rgba(0,0,0,0.5)', maxWidth: '100%', height: 'auto', touchAction: 'none' }}
         />
@@ -354,10 +362,14 @@ const App: React.FC = () => {
           </div>
         )}
       </div>
-      <div style={{ marginTop: '20px', maxWidth: '600px', textAlign: 'center', lineHeight: '1.6', color: '#aaa' }}>
-        <p><strong>How to Play:</strong> Click on <span style={{color: '#222'}}>dark empty nodes</span> to build towers (Cost: 100). Towers increase the weight of nearby paths, causing enemies to seek safer routes. Double-click on <span style={{color: '#555'}}>roads</span> to place a temporary block (Cost: 50, Duration: 5s).</p>
-        <p>Completing all waves in a stage clears the map, <strong>resets towers/money</strong>, and generates a new map!</p>
-      </div>
+      {showHowToPlay && (
+        <div style={{ marginTop: '20px', maxWidth: '600px', textAlign: 'center', lineHeight: '1.6', color: '#aaa', backgroundColor: '#1e1e1e', padding: '20px', borderRadius: '8px', position: 'relative' }}>
+          <button onClick={() => setShowHowToPlay(false)} style={{ position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '1.2em' }}>×</button>
+          <p><strong>How to Play:</strong> Click on <span style={{color: '#222'}}>dark empty nodes</span> to build towers (Cost: 100). Towers increase the weight of nearby paths, causing enemies to seek safer routes. Double-click on <span style={{color: '#555'}}>roads</span> to place a temporary block (Cost: 50, Duration: 5s).</p>
+          <p><strong>Upgrades:</strong> Right-click or double-tap an existing tower to open the upgrade menu.</p>
+          <p>Completing all waves in a stage clears the map, <strong>resets towers/money</strong>, and generates a new map!</p>
+        </div>
+      )}
     </div>
   );
 };

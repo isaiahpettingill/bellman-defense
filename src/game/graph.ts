@@ -43,7 +43,11 @@ export function generateGraph(stage: number) {
   const startNodeId = 'node_0_0';
   const endNodeId = `node_${GRID_SIZE - 1}_${GRID_SIZE - 1}`;
 
-  // Ensure at least two paths
+  // Ensure paths
+  // Stage 1: 1 path
+  // Stage 2: 2 paths
+  // Stage 3+: 3 paths
+  const numPaths = Math.min(stage, 3);
   const createPath = () => {
     let curX = 0;
     let curY = 0;
@@ -57,10 +61,14 @@ export function generateGraph(stage: number) {
       pathNodeIds.add(`node_${curX}_${curY}`);
     }
   };
-  createPath();
-  createPath();
+  
+  for (let i = 0; i < numPaths; i++) {
+    createPath();
+  }
 
-  for (let i = 0; i < 15; i++) {
+  // Random nodes to add complexity based on stage
+  const extraNodes = 10 + (stage * 5);
+  for (let i = 0; i < extraNodes; i++) {
     const rx = Math.floor(Math.random() * GRID_SIZE);
     const ry = Math.floor(Math.random() * GRID_SIZE);
     pathNodeIds.add(`node_${rx}_${ry}`);
